@@ -193,6 +193,20 @@ QPBpolyForm QPBpolyForm::operator-(QPBpolyForm qpbf)
 	return newqpbf;
 }
 
+QPBpolyForm QPBpolyForm::operator*(double u) 
+{
+	QPBpolyForm newqpbf;
+
+	QPBF::key_compare less= _QPBcoeff.key_comp();
+
+	
+	for(QPBF::iterator itit=_QPBcoeff.begin();itit!=_QPBcoeff.end();itit++)
+	{
+		newqpbf.addTerm2(itit->first.first,itit->first.second,itit->second);
+	}
+
+	return newqpbf;
+}
 
 double& QPBpolyForm::operator()(int v0, int v1)
 {
@@ -227,7 +241,8 @@ double& QPBpolyForm::operator()(int v0)
 
 void QPBpolyForm::clear()
 {
-	_QPBcoeff.clear();
+	return _QPBcoeff.clear();
+
 }
 
 void QPBpolyForm::clean()
@@ -248,4 +263,19 @@ int QPBpolyForm::size()
 	this->clean();
 
 	return _QPBcoeff.size();
+}
+
+double QPBpolyForm::evaluate(Matrix<bool,Dynamic,1> y)
+{
+	double value=0;
+
+	for(QPBF::iterator itit=_QPBcoeff.begin();itit!=_QPBcoeff.end();itit++)
+	{
+		if(y(itit->first.first)==true&&y(itit->first.second)==true)
+		{
+			value+=itit->second;
+		}
+	}
+
+	return value;
 }

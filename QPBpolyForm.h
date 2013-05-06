@@ -1,5 +1,7 @@
 #include <map>
-
+#include <Eigen\core>
+#include <Eigen\Dense>
+using namespace Eigen;
 /*
 Every object of QPBpolyForm stores the polynomial form of a
 Quadratic pseudo-Boolean function. 
@@ -32,13 +34,16 @@ public:
 
 	QPBpolyForm operator+(QPBpolyForm qpbf);
 	QPBpolyForm operator-(QPBpolyForm qpbf);
+	QPBpolyForm operator*(double u);
 	double& operator()(int v0, int v1);
 	double& operator()(int v0);
 
 	void clear();//remove all terms
 	void clean();//remove 0 terms
 
-	int size();
+	int size();//number of nonzero terms
+
+	double evaluate(Matrix<bool,Dynamic,1> y);
 
 private:
 	int _maxvar;
