@@ -1,21 +1,31 @@
 #include "QPBpolyForm.h"
 
 
-QPBpolyForm::QPBpolyForm()
+QPBpolyForm::QPBpolyForm(int numvar)
 {  
+	_numvar = numvar;
 	return;
 }
 
 
 void QPBpolyForm::addTerm1(int v0, double coeff)
 {
+	if(v0>_numvar) 
+	{
+			printf("v0=%d>numvar=%d\n",v0,_numvar);
+			exit(0);
+	}
 	return addTerm2(v0,v0,coeff);
 }
 
 
 void QPBpolyForm::addTerm2(int v0, int v1, double coeff)
 {
-	if(v1>_maxvar) _maxvar = v1;
+	if(v1>_numvar) 
+	{
+			printf("v1=%d>numvar=%d\n",v0,_numvar);
+			exit(0);
+	}
 
 	if(v0<=v1)
 	{
@@ -104,7 +114,9 @@ QPBF::iterator QPBpolyForm::lastTerm()
 
 QPBpolyForm QPBpolyForm::operator+(QPBpolyForm qpbf) 
 {
-	QPBpolyForm newqpbf;
+	int newnumvar = (_numvar>qpbf._numvar)?_numvar:qpbf._numvar;
+
+	QPBpolyForm newqpbf(newnumvar);
 
 	QPBF::key_compare less= _QPBcoeff.key_comp();
 
@@ -148,7 +160,9 @@ QPBpolyForm QPBpolyForm::operator+(QPBpolyForm qpbf)
 
 QPBpolyForm QPBpolyForm::operator-(QPBpolyForm qpbf) 
 {
-	QPBpolyForm newqpbf;
+	int newnumvar = (_numvar>qpbf._numvar)?_numvar:qpbf._numvar;
+
+	QPBpolyForm newqpbf(newnumvar);
 
 	QPBF::key_compare less= _QPBcoeff.key_comp();
 
@@ -195,7 +209,7 @@ QPBpolyForm QPBpolyForm::operator-(QPBpolyForm qpbf)
 
 QPBpolyForm QPBpolyForm::operator*(double u) 
 {
-	QPBpolyForm newqpbf;
+	QPBpolyForm newqpbf(_numvar);
 
 	QPBF::key_compare less= _QPBcoeff.key_comp();
 
@@ -221,6 +235,12 @@ double& QPBpolyForm::operator()(int v0, int v1)
 	{
 		v1_ = v0;
 		v0_ = v1;
+	}
+
+	if(v1_>_numvar) 
+	{
+			printf("v1=%d>numvar=%d\n",v0,_numvar);
+			exit(0);
 	}
 
 	QPBF::iterator _Where = _QPBcoeff.lower_bound(std::make_pair(v0_,v1_));
@@ -278,4 +298,9 @@ double QPBpolyForm::evaluate(Matrix<bool,Dynamic,1> y)
 	}
 
 	return value;
+}
+
+int QPBpolyForm::numvar()
+{
+	return _numvar;
 }

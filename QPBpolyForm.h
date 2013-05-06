@@ -19,7 +19,7 @@ typedef std::map<std::pair<int,int>,double> QPBF;
 class QPBpolyForm
 {
 public:
-  	QPBpolyForm();
+  	QPBpolyForm(int numvar);//numvar is the number of boolean variables
 	void addTerm1(int v0, double coeff);
 	void addTerm2(int v0, int v1, double coeff);
 	double getTerm1(int v0);
@@ -43,11 +43,12 @@ public:
 
 	int size();//number of nonzero terms
 
+	int numvar();//return the number of boolean variables
+
 	double evaluate(Matrix<bool,Dynamic,1> y);
 
 private:
-	int _maxvar;
-
+	int _numvar;
 	//_QPBcoeff stores the coefficient matrix A of the polynomial form
 	//e.g. f(x)=x'Ax
 	//It is a map from the row and column to the coefficient
