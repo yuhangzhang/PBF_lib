@@ -304,3 +304,10 @@ int QPBpolyForm::numvar()
 {
 	return _numvar;
 }
+
+int QPBpolyForm::updatenumvar(int numvar)
+{
+	_numvar = numvar;
+
+	return _numvar;
+}

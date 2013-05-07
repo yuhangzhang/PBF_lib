@@ -44,6 +44,7 @@ public:
 	int size();//number of nonzero terms
 
 	int numvar();//return the number of boolean variables
+	int updatenumvar(int numvar);
 
 	double evaluate(Matrix<bool,Dynamic,1> y);
 
