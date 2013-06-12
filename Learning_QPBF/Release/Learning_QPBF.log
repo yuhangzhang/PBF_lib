@@ -1,0 +1,18 @@
+﻿Build started 12/06/2013 10:58:20 AM.
+Project "H:\github\PBF_lib\Learning_QPBF\Learning_QPBF.vcxproj" on node 2 (build target(s)).
+InitializeBuildStatus:
+  Touching "Release\Learning_QPBF.unsuccessfulbuild".
+ClCompile:
+  c:\Program Files\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I.. /IC:\yuhang\eigen3 /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt Learning_QPBF.cpp
+  Learning_QPBF.cpp
+Lib:
+  c:\Program Files\Microsoft Visual Studio 10.0\VC\bin\Lib.exe /OUT:"H:\github\PBF_lib\Release\Learning_QPBF.lib" /NOLOGO /LTCG Release\Learning_QPBF.obj
+  Learning_QPBF.vcxproj -> H:\github\PBF_lib\Release\Learning_QPBF.lib
+FinalizeBuildStatus:
+  Deleting file "Release\Learning_QPBF.unsuccessfulbuild".
+  Touching "Release\Learning_QPBF.lastbuildstate".
+Done Building Project "H:\github\PBF_lib\Learning_QPBF\Learning_QPBF.vcxproj" (build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:08.03
