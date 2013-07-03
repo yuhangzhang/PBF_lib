@@ -1,6 +1,7 @@
 #include <map>
-#include <Eigen\core>
-#include <Eigen\Dense>
+#include <Eigen/core>
+#include <Eigen/Dense>
+#include <Eigen/SparseCore>
 using namespace Eigen;
 /*
 Every object of QPBpoly stores a
