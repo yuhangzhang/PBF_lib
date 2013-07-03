@@ -3,6 +3,7 @@
 typedef struct cQPBFlist
 {
 	QPBpoly* A_i;
+	int cid;
 	cQPBFlist* next;
 }cQPBFlist;
 
@@ -16,7 +17,7 @@ public:
 private:
 	Matrix<double,Dynamic,1> _para;
 	cQPBFlist* _componentlist;
-
+	int _numvar;
 };
 
 
