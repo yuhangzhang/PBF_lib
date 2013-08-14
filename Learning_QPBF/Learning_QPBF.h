@@ -1,4 +1,6 @@
 #include "QPBpoly.h"
+#include "engine.h"
+
 
 typedef struct cQPBFlist
 {
