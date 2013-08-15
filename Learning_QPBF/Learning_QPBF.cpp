@@ -14,152 +14,147 @@ Learning_QPBF::Learning_QPBF()
 }
 
 
-void Learning_QPBF::add_cQPBF(QPBpoly A_i)
+void Learning_QPBF::add_cQPBF(QPBpoly* A_i)
 {
-	cQPBFlist temp;
-	temp.A_i = &A_i;
-	temp.cid = _para.rows();
-	temp.next= _componentlist;
-	_componentlist = &temp;
+	cQPBFlist *temp = new cQPBFlist;
+	temp->A_i = A_i;
+	temp->cid = _para.rows();
+	temp->next= _componentlist;
+	_componentlist = temp;
 
 	_para.resize(_para.rows()+1,1);
 
-	if(_numvar<A_i.numvar()) _numvar=A_i.numvar();//update the number of boolean variables
+	//if(_numvar>0) 
+	//{
+	//	printf("_numvar=%d %f %f\n",_numvar,_componentlist->A_i->getTerm1(0),((_componentlist->next)->A_i)->getTerm1(0));
+	//	getchar();
+	//}
+
+	if(_numvar<A_i->numvar()) _numvar=A_i->numvar();//update the number of boolean variables
+
+	
 
 	return;
 }
 
 
 
-void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> w)
+void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 //y is the ground truth, w is the weight of each parameter in the objective function
 {
 	QPBpoly vid(_numvar);
 
-	int counter=0;
+	int counter=1;//we count from 1 because will use vid(i,j)=0 to identify absent terms
+				  //also, this simplifies the parameter transition to Matlab
 
-	for(int i=0;i<_numvar;i++)
+	for(cQPBFlist *k=_componentlist;k!=NULL;k=k->next)
 	{
-		vid(i,i)=counter++;//every liner term must exist, even if zero.
-
-		for(int j=i+1;j<_numvar;j++)
+		for(QPBF::iterator it=k->A_i->firstTerm();it!=k->A_i->lastTerm();it++)
 		{
-			for(cQPBFlist *k=_componentlist;k!=NULL;k=k->next)
+			if(vid.getTerm2(it->first.first,it->first.second)==0)
 			{
-				if(k->A_i->getTerm2(i,j)!=0) 
-				{
-					vid(i,j)=counter++;
-					break;
-				}
+				vid(it->first.first,it->first.second)=counter++;
 			}
 		}
 	}
 
-	//counter = the number of active quadratic terms
+	//counter = number of active terms+1
 
 
 	std::vector<Triplet<double>> tripletList;
-	tripletList.reserve(_numvar*_numvar*(_para.size()+4));//a rough estimation of nonzero entries in the linear constraints
+	tripletList.reserve(4*_numvar*(_para.size()+4));//a rough estimation of nonzero entries in the linear constraints
 	
-
+	printf("Construct Matrix A ...\n");
 	//start forming the contraint matrix, 
 	//each row : an entry in A
 	//each column : component functions, slacks, entries in P
-
-	for(int i=0;i<_numvar;i++)
+	//however, do not do it entry by entry. Use the sparsity
+	for(cQPBFlist *k=_componentlist;k!=NULL;k=k->next)
 	{
-		for(int j=i;j<_numvar;j++)
+		for(QPBF::iterator it=k->A_i->firstTerm();it!=k->A_i->lastTerm();it++)
 		{
-			//EACH ROW
+			int i=it->first.first;
+			int j=it->first.second;
+			
+			tripletList.push_back(Triplet<double>(vid(i,j),k->cid+1,it->second));//remember we count from 1
 
-			if(vid(i,j)==0)
-			{
-			}
-			else//NOT EMPTY
-			{
-				for(cQPBFlist *k=_componentlist;k!=NULL;k=k->next)//each component
-				{
-					if(k->A_i->getTerm2(i,j)!=0) tripletList.push_back(Triplet<double>(vid(i,j),k->cid,k->A_i->getTerm2(i,j)));
-				}
-
-				if(i==j) // if diagonal entry, add slack
-				{
-					if(y(i)==0) tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+i,1));
-					else tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+i,-1));
-				}
-
-				//P_ij 
-				tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+vid(i,j),-1));//P11
-				tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+counter+vid(i,j),+1));//P12
-				tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*2)+vid(i,j),+1));//P21
-				tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*3)+vid(i,j),-1));//P22
-
-				if(i==j) // if diagonal entry, add P21 P22
-				{
-					//add 1^TP21
-					for(int k=0;k<j;k++)
-					{
-						if(vid(k,j)!=0)
-							tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*2)+vid(k,j),-2));
-					}
-
-					tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*2)+vid(i,i),-1));
-					
-					//add 1^TP12, which equals to the lower triangular part of P21
-					
-					tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*1)+vid(i,i),-1));
-
-					for(int k=i+1;k<_numvar;k++)
-					{
-						if(vid(i,k)!=0)
-							tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*1)+vid(i,k),-2));
-					}
-
-					//add 1^TP22
-					for(int k=0;k<j;k++)
-					{
-						if(vid(k,j)!=0)
-							tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*3)+vid(k,j),2));
-					}
-					for(int k=j;k<_numvar;k++)
-					{
-						if(vid(i,k)!=0)
-							tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*3)+vid(i,k),2));
-					}
-				}
-			}
 		}
 	}
 
-	//f(y)=0
-	for(int i=0;i<_numvar;i++)
-	{
-		for(int j=i;j<_numvar;j++)
+	for(QPBF::iterator it=vid.firstTerm();it!=vid.lastTerm();it++)
+	{		
+		int i=it->first.first;
+		int j=it->first.second;
+
+		
+		if(i==j) // if diagonal entry
 		{
-			if(y(i)==0&&y(j)==0)
-			{
-				tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+vid(i,j),1));//P11
-			}
-			else if(y(i)==0)
-			{
-				tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*2)+vid(i,j),1));//P21
-			}
-			else if(y(j)==0)
-			{
-				tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*1)+vid(i,j),1));//P12
-			}
-			else
-			{
-				tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*3)+vid(i,j),1));//P22
-			}
+			// add slack
+			if(y(i)==0) tripletList.push_back(Triplet<double>(it->second,_para.rows()+i+1,1));
+			else tripletList.push_back(Triplet<double>(it->second,_para.rows()+i+1,-1));
+			//add 1^TP21
+			tripletList.push_back(Triplet<double>(it->second,_para.rows()+_numvar+(counter*2)+it->second+1,-1));
+			//add 1^TP12, which equals to the lower triangular part of P21
+			tripletList.push_back(Triplet<double>(it->second,_para.rows()+_numvar+(counter*1)+it->second+1,-1));
+		}	
+
+		
+		if(i<j)
+		{
+			//add 1^TP21
+			tripletList.push_back(Triplet<double>(vid.getTerm1(j),_para.rows()+_numvar+(counter*2)+it->second+1,-2));
+			//add 1^TP22
+			tripletList.push_back(Triplet<double>(vid.getTerm1(j),_para.rows()+_numvar+(counter*3)+it->second+1,2));
+
 		}
-	}	
+		
+		if(i>j)
+		{
+			//add 1^TP12, which equals to the lower triangular part of P21
+			tripletList.push_back(Triplet<double>(vid.getTerm1(i),_para.rows()+_numvar+(counter*1)+it->second+1,-2));
+			//add 1^TP22
+			tripletList.push_back(Triplet<double>(vid.getTerm1(i),_para.rows()+_numvar+(counter*3)+it->second+1,2));
+
+		}
+
+		tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+it->second+1,-1));//P11
+		tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+counter+it->second+1,+1));//P12
+		tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*2)+it->second+1,+1));//P21
+		tripletList.push_back(Triplet<double>(vid(i,j),_para.rows()+_numvar+(counter*3)+it->second+1,-1));//P22
+	}
+
+
+
+	printf("make f_p(y)=0\n");
+	for(QPBF::iterator it=vid.firstTerm();it!=vid.lastTerm();it++)
+	{
+		int i=it->first.first;
+		int j=it->first.second;
+
+		if(y(i)==0&&y(j)==0)
+		{
+			tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+it->second+1,1));//P11
+		}
+		else if(y(i)==0)
+		{
+			tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*2)+it->second+1,1));//P21
+		}
+		else if(y(j)==0)
+		{
+			tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*1)+it->second+1,1));//P12
+		}
+		else
+		{
+			tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*3)+it->second+1,1));//P22
+		}
+	}
+
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Call Matlab Engine
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+	printf("passing to matlab\n");
 	Engine *eg = engOpenSingleUse(NULL, NULL, NULL);
 	engEvalString(eg,"cd C:\\yuhang\\coin-or\\QPBF_learning\\Release\\cvx\\cvx;");
 	engEvalString(eg,"cvx_setup;");	
@@ -194,9 +189,9 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> w)
 	tripletList.clear();
 
 	engPutVariable(eg,"index_i",index_i);
-	engEvalString(eg,"index_i = index_i+1;");
+	//engEvalString(eg,"index_i = index_i+1;");
 	engPutVariable(eg,"index_j",index_j);
-	engEvalString(eg,"index_j = index_j+1;");
+	//engEvalString(eg,"index_j = index_j+1;");
 	engPutVariable(eg,"value_s",value_s);
 
 	engEvalString(eg,"A = sparse(index_i,index_j,value_s,numact+1,numcom+numvar+numact*4,nznode);");
@@ -220,10 +215,10 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> w)
 	mxArray *weights = engGetVariable(eg,"w");
 	mxArray *positerms = engGetVariable(eg,"p");
 
-	w.resize(_para.size());
+	
 	for(int i=0;i<_para.size();i++)
 	{
-		w(i) = mxGetPr(weights)[i];
+		_para(i) = mxGetPr(weights)[i];
 	}
 
 	return;

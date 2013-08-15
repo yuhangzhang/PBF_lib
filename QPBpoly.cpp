@@ -46,6 +46,11 @@ void QPBpoly::addTerm2(int v0, int v1, double coeff)
 	}		
 }
 
+double QPBpoly::getTerm1(int v0)
+{
+	return getTerm2(v0,v0);
+}
+
 double QPBpoly::getTerm2(int v0, int v1)
 {
 	if(v0<=v1)
