@@ -5,6 +5,7 @@
 #include "vil/vil_save.h"
 
 
+
 double colorDif(vil_image_view<vxl_byte>& im, int i1, int j1, int i2, int j2)
 {
 	double c1,c2;
@@ -28,7 +29,7 @@ int main(int argc, char* argv[])
 	vil_image_view<vxl_byte> gt;
 	vil_image_view<vxl_byte> tm = vil_load(argv[2]);
 	vil_resample_bilin(tm,gt,im.ni(),im.nj());
-
+	vil_save(gt,"o2.png");
 	Learning_QPBF learner;
 
 	QPBpoly dt_gt(im.ni()*im.nj());//component function 0: margin to ground truth
@@ -44,7 +45,7 @@ int main(int argc, char* argv[])
 	{
 		for(unsigned int j=0;j<im.nj();j++)
 		{
-			if(gt(i,j)==0)
+			if(gt(i,j)<100)
 			{
 				dt_gt.addTerm1(i*im.nj()+j,-1);
 			}
@@ -53,12 +54,12 @@ int main(int argc, char* argv[])
 				dt_gt.addTerm1(i*im.nj()+j,1);
 			}		
 
-			dt_r.addTerm1(i*im.nj()+j,im(i,j,0));
-			dt_g.addTerm1(i*im.nj()+j,im(i,j,1));
-			dt_b.addTerm1(i*im.nj()+j,im(i,j,2));
-			dt_r2.addTerm1(i*im.nj()+j,im(i,j,0)*im(i,j,0));
-			dt_g2.addTerm1(i*im.nj()+j,im(i,j,1)*im(i,j,1));
-			dt_b2.addTerm1(i*im.nj()+j,im(i,j,2)*im(i,j,2));
+			dt_r.addTerm1(i*im.nj()+j,double(im(i,j,0))/255);
+			dt_g.addTerm1(i*im.nj()+j,double(im(i,j,1))/255);
+			dt_b.addTerm1(i*im.nj()+j,double(im(i,j,2))/255);
+			dt_r2.addTerm1(i*im.nj()+j,double(im(i,j,0))*im(i,j,0)/65025);
+			dt_g2.addTerm1(i*im.nj()+j,double(im(i,j,1))*im(i,j,1)/65025);
+			dt_b2.addTerm1(i*im.nj()+j,double(im(i,j,2))*im(i,j,2)/65025);
 		}
 	}
 	
@@ -120,7 +121,7 @@ int main(int argc, char* argv[])
 	{
 		for(unsigned int j=0;j<im.nj();j++)
 		{
-			if(gt(i,j)==0)
+			if(gt(i,j)<100)
 			{
 				y_star(i*im.nj()+j) = 0;
 			}
@@ -133,6 +134,20 @@ int main(int argc, char* argv[])
 
 	learner.learn(y_star);
 
+	Matrix<bool,Dynamic,1> y;
+	vil_image_view<vxl_byte> om(im.ni(),im.nj());
+
+	learner.optimize(y);
+
+	for(unsigned int i=0;i<om.ni();i++)
+	{
+		for(unsigned int j=0;j<om.nj();j++)
+		{
+			om(i,j) = y(i*om.nj()+j)*200;
+		}
+	}
+
+	vil_save(om,"output.png");
 
 	return 0;
 }
