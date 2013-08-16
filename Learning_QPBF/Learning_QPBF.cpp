@@ -13,6 +13,11 @@ Learning_QPBF::Learning_QPBF()
 	return;
 }
 
+int Learning_QPBF::numvar()
+{
+	return _numvar;
+}
+
 
 void Learning_QPBF::add_cQPBF(QPBpoly* A_i)
 {
@@ -96,6 +101,8 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 			tripletList.push_back(Triplet<double>(it->second,_para.rows()+_numvar+(counter*2)+it->second+1,-1));
 			//add 1^TP12, which equals to the lower triangular part of P21
 			tripletList.push_back(Triplet<double>(it->second,_para.rows()+_numvar+(counter*1)+it->second+1,-1));
+			//add 1^TP22
+			tripletList.push_back(Triplet<double>(vid.getTerm1(i),_para.rows()+_numvar+(counter*3)+it->second+1,2));
 		}	
 
 		
@@ -131,17 +138,17 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 		int i=it->first.first;
 		int j=it->first.second;
 
-		if(y(i)==0&&y(j)==0)
+		if(y(i)==1&&y(j)==1)
 		{
 			tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+it->second+1,1));//P11
 		}
-		else if(y(i)==0)
-		{
-			tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*2)+it->second+1,1));//P21
-		}
-		else if(y(j)==0)
+		else if(y(i)==1)
 		{
 			tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*1)+it->second+1,1));//P12
+		}
+		else if(y(j)==1)
+		{
+			tripletList.push_back(Triplet<double>(counter,_para.rows()+_numvar+(counter*2)+it->second+1,1));//P21
 		}
 		else
 		{
@@ -206,7 +213,7 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 	engEvalString(eg,"minimize(norm(w,1)+norm(d,1));");
 	engEvalString(eg,"subject to");
 	engEvalString(eg,"A*[w;d;p]==zeros(numact+1,1);");
-	engEvalString(eg,"w(0)==1;");
+	engEvalString(eg,"w(1)==1;");
 	engEvalString(eg,"d>=zeros(numvar,1);");
 	engEvalString(eg,"p>=zeros(numact*4,1);");
 	engEvalString(eg,"cvx_end");
@@ -222,4 +229,42 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 	}
 
 	return;
+}
+
+double Learning_QPBF::optimize(Matrix<bool,Dynamic,1> &y)
+{
+	typedef Graph<double,double,double> GraphType;
+	GraphType *g = new GraphType(/*estimated # of nodes*/ _numvar, /*estimated # of edges*/ _numvar*2); 
+	
+	g->add_node(_numvar);
+	
+	for(cQPBFlist *k=_componentlist;k->cid>0;k=k->next)
+	{
+		for(QPBF::iterator it=k->A_i->firstTerm();it!=k->A_i->lastTerm();it++)
+		{
+			int i=it->first.first;
+			int j=it->first.second;
+			
+			if(i==j)
+			{
+				g->add_tweights(i,it->second*_para[k->cid],0);				
+			}
+			else
+			{
+				g->add_tweights(j,it->second*_para[k->cid],0);
+				g->add_edge(i,j,-it->second*_para[k->cid],0);
+			}
+		}
+	}	
+	
+	double energy=g->maxflow();
+
+	y.resize(_numvar);
+
+	for(int i=0;i<_numvar;i++)
+	{
+		y(i) = (g->what_segment(i) == GraphType::SOURCE)?1:0;
+	}
+
+	return energy;
 }
