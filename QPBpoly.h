@@ -36,7 +36,7 @@ public:
 	QPBpoly operator+(QPBpoly qpbf);
 	QPBpoly operator-(QPBpoly qpbf);
 	QPBpoly operator*(double u);
-	double& operator()(int v0, int v1);
+	double& operator()(int v0, int v1);//use () operators only if the matrix is not sparse or large
 	double& operator()(int v0);
 
 	void clear();//remove all terms

@@ -132,7 +132,11 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	learner.learn(y_star);
+	Matrix<double,Dynamic,1> coeff;
+	coeff.resize(learner.numcomp());
+	coeff.fill(1);
+
+	learner.learn(y_star,coeff);
 
 	Matrix<bool,Dynamic,1> y;
 	vil_image_view<vxl_byte> om(im.ni(),im.nj());

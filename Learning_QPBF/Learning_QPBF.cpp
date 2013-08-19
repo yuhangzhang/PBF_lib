@@ -19,7 +19,7 @@ int Learning_QPBF::numvar()
 }
 
 
-void Learning_QPBF::add_cQPBF(QPBpoly* A_i)
+int Learning_QPBF::add_cQPBF(QPBpoly* A_i)
 {
 	cQPBFlist *temp = new cQPBFlist;
 	temp->A_i = A_i;
@@ -29,22 +29,34 @@ void Learning_QPBF::add_cQPBF(QPBpoly* A_i)
 
 	_para.resize(_para.rows()+1,1);
 
-	//if(_numvar>0) 
-	//{
-	//	printf("_numvar=%d %f %f\n",_numvar,_componentlist->A_i->getTerm1(0),((_componentlist->next)->A_i)->getTerm1(0));
-	//	getchar();
-	//}
-
-	if(_numvar<A_i->numvar()) _numvar=A_i->numvar();//update the number of boolean variables
-
+	if(_numvar<A_i->numvar()) _numvar = A_i->numvar();//update the number of boolean variables
 	
+	return _componentlist->cid;
+}
+
+void Learning_QPBF::remove_cQPBF(int cid)
+{
+	cQPBFlist *temp = _componentlist;
+
+	while(temp!=NULL)
+	{
+		if(temp->cid == cid) 
+		{
+				temp->A_i = NULL;
+				break;
+		}
+	}
 
 	return;
 }
 
+int Learning_QPBF::numcomp()
+{
+	if(_componentlist==NULL) return 0;
+	return _componentlist->cid+1;
+}
 
-
-void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
+void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coeff)
 //y is the ground truth, w is the weight of each parameter in the objective function
 {
 	QPBpoly vid(_numvar);
@@ -76,6 +88,8 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 	//however, do not do it entry by entry. Use the sparsity
 	for(cQPBFlist *k=_componentlist;k!=NULL;k=k->next)
 	{
+		if(k->A_i==NULL) continue;
+
 		for(QPBF::iterator it=k->A_i->firstTerm();it!=k->A_i->lastTerm();it++)
 		{
 			int i=it->first.first;
@@ -182,6 +196,15 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 	*((double *) mxGetPr(scalar))=_numvar;
 	engPutVariable(eg,"numvar",scalar);
 
+	mxArray *coeffmx = mxCreateDoubleMatrix(coeff.size(),1,mxREAL);
+
+	for(int i=0;i<coeff.size();i++)
+	{
+		mxGetPr(coeffmx)[i] = coeff(i);
+	}
+	engPutVariable(eg,"coeffmx",coeffmx);
+	mxDestroyArray(coeffmx);
+
 	mxArray *index_i = mxCreateDoubleMatrix(tripletList.size(),1,mxREAL);
 	mxArray *index_j = mxCreateDoubleMatrix(tripletList.size(),1,mxREAL);
 	mxArray *value_s = mxCreateDoubleMatrix(tripletList.size(),1,mxREAL);
@@ -201,6 +224,10 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 	//engEvalString(eg,"index_j = index_j+1;");
 	engPutVariable(eg,"value_s",value_s);
 
+	mxDestroyArray(index_i);
+	mxDestroyArray(index_j);
+	mxDestroyArray(value_s);
+
 	engEvalString(eg,"A = sparse(index_i,index_j,value_s,numact+1,numcom+numvar+numact*4,nznode);");
 	
 	engEvalString(eg,"cvx_begin");
@@ -210,7 +237,7 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 	engEvalString(eg,"variable p(numact*4);");
 
 
-	engEvalString(eg,"minimize(norm(w,1)+norm(d,1));");
+	engEvalString(eg,"minimize(norm(coeffmx.*w,1)+norm(d,1));");
 	engEvalString(eg,"subject to");
 	engEvalString(eg,"A*[w;d;p]==zeros(numact+1,1);");
 	engEvalString(eg,"w(1)==1;");
@@ -220,13 +247,17 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y)
 	
 	mxArray *slacks = engGetVariable(eg,"d");
 	mxArray *weights = engGetVariable(eg,"w");
-	mxArray *positerms = engGetVariable(eg,"p");
+	//mxArray *positerms = engGetVariable(eg,"p");
 
 	
 	for(int i=0;i<_para.size();i++)
 	{
 		_para(i) = mxGetPr(weights)[i];
 	}
+
+	engClose(eg);
+	vid.clear();
+
 
 	return;
 }

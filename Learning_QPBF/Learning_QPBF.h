@@ -15,9 +15,11 @@ class Learning_QPBF
 {
 public:
 	Learning_QPBF();
-	void add_cQPBF(QPBpoly* A_i);
-	void learn(Matrix<bool,Dynamic,1> y);
+	int add_cQPBF(QPBpoly* A_i); //return the id of the added component
+	void remove_cQPBF(int cid);//remove component-cid
+	void learn(Matrix<bool,Dynamic,1> y, Matrix<double,Dynamic,1> coeff);
 	int numvar();
+	int numcomp();
 	double optimize(Matrix<bool,Dynamic,1>& y);
 private:
 	Matrix<double,Dynamic,1> _para;
