@@ -32,13 +32,13 @@ int main(int argc, char* argv[])
 	vil_save(gt,"o2.png");
 	Learning_QPBF learner;
 
-	QPBpoly dt_gt(im.ni()*im.nj());//component function 0: margin to ground truth
-	QPBpoly dt_r(im.ni()*im.nj());//component function 1: data term on R
-	QPBpoly dt_g(im.ni()*im.nj());//component function 2: data term on R
-	QPBpoly dt_b(im.ni()*im.nj());//component function 3: data term on R
-	QPBpoly dt_r2(im.ni()*im.nj());//component function 4: data term on R
-	QPBpoly dt_g2(im.ni()*im.nj());//component function 5: data term on R
-	QPBpoly dt_b2(im.ni()*im.nj());//component function 6: data term on R
+	QPBpoly dt_gt;//component function 0: margin to ground truth
+	QPBpoly dt_r;//component function 1: data term on R
+	QPBpoly dt_g;//component function 2: data term on R
+	QPBpoly dt_b;//component function 3: data term on R
+	QPBpoly dt_r2;//component function 4: data term on R
+	QPBpoly dt_g2;//component function 5: data term on R
+	QPBpoly dt_b2;//component function 6: data term on R
 
 
 	for(unsigned int i=0;i<im.ni();i++)
@@ -63,8 +63,8 @@ int main(int argc, char* argv[])
 		}
 	}
 	
-	QPBpoly pt_hc(im.ni()*im.nj());//component function 7: horizontal constant edge
-	QPBpoly pt_hs(im.ni()*im.nj());//component function 8: horizontal constrast sensitive edge
+	QPBpoly pt_hc;//component function 7: horizontal constant edge
+	QPBpoly pt_hs;//component function 8: horizontal constrast sensitive edge
 
 	for(unsigned int i=0;i<im.ni()-1;i++)
 	{
@@ -82,8 +82,8 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	QPBpoly pt_vc(im.ni()*im.nj());//component function 9: vertical constant edge
-	QPBpoly pt_vs(im.ni()*im.nj());//component function 10: vertical constrast sensitive edge
+	QPBpoly pt_vc;//component function 9: vertical constant edge
+	QPBpoly pt_vs;//component function 10: vertical constrast sensitive edge
 
 	for(unsigned int i=0;i<im.ni();i++)
 	{
@@ -134,9 +134,13 @@ int main(int argc, char* argv[])
 
 	Matrix<double,Dynamic,1> coeff;
 	coeff.resize(learner.numcomp());
-	coeff.fill(1);
+	coeff.fill(0);
+	Matrix<double,Dynamic,1> lambda;
+	lambda.resize(learner.numcomp());
+	lambda.fill(0);
 
-	learner.learn(y_star,coeff);
+
+	learner.learn(y_star,coeff,lambda);
 
 	Matrix<bool,Dynamic,1> y;
 	vil_image_view<vxl_byte> om(im.ni(),im.nj());

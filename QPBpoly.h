@@ -20,7 +20,7 @@ typedef std::map<std::pair<int,int>,double> QPBF;
 class QPBpoly
 {
 public:
-  	QPBpoly(int numvar);//numvar is the number of boolean variables
+  	QPBpoly();
 	void addTerm1(int v0, double coeff);
 	void addTerm2(int v0, int v1, double coeff);
 	double getTerm1(int v0);

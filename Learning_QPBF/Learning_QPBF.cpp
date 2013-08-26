@@ -56,10 +56,10 @@ int Learning_QPBF::numcomp()
 	return _componentlist->cid+1;
 }
 
-void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coeff)
+void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coeff, Matrix<double,Dynamic,1> lambda)
 //y is the ground truth, w is the weight of each parameter in the objective function
 {
-	QPBpoly vid(_numvar);
+	QPBpoly vid;
 
 	int counter=1;//we count from 1 because will use vid(i,j)=0 to identify absent terms
 				  //also, this simplifies the parameter transition to Matlab
@@ -197,13 +197,21 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coef
 	engPutVariable(eg,"numvar",scalar);
 
 	mxArray *coeffmx = mxCreateDoubleMatrix(coeff.size(),1,mxREAL);
+	mxArray *lambdamx = mxCreateDoubleMatrix(lambda.size(),1,mxREAL);
 
 	for(int i=0;i<coeff.size();i++)
 	{
 		mxGetPr(coeffmx)[i] = coeff(i);
 	}
+	for(int i=0;i<lambda.size();i++)
+	{
+		mxGetPr(lambdamx)[i] = lambda(i);
+	}
+
 	engPutVariable(eg,"coeffmx",coeffmx);
+	engPutVariable(eg,"lambdamx",lambdamx);
 	mxDestroyArray(coeffmx);
+	mxDestroyArray(lambdamx);
 
 	mxArray *index_i = mxCreateDoubleMatrix(tripletList.size(),1,mxREAL);
 	mxArray *index_j = mxCreateDoubleMatrix(tripletList.size(),1,mxREAL);
@@ -237,7 +245,7 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coef
 	engEvalString(eg,"variable p(numact*4);");
 
 
-	engEvalString(eg,"minimize(norm(coeffmx.*w,1)+norm(d,1));");
+	engEvalString(eg,"minimize(norm(coeffmx.*w,1)+norm(d,1)+lambdamx.*w);");
 	engEvalString(eg,"subject to");
 	engEvalString(eg,"A*[w;d;p]==zeros(numact+1,1);");
 	engEvalString(eg,"w(1)==1;");
@@ -299,3 +307,11 @@ double Learning_QPBF::optimize(Matrix<bool,Dynamic,1> &y)
 
 	return energy;
 }
+
+void Learning_QPBF::para(Matrix<double,Dynamic,1>& p)
+{
+	p = _para;
+
+	return;
+}
+

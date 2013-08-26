@@ -1,19 +1,18 @@
 #include "QPBpoly.h"
 
 
-QPBpoly::QPBpoly(int numvar)
+QPBpoly::QPBpoly()
 {  
-	_numvar = numvar;
+	_numvar = 0;
 	return;
 }
 
 
 void QPBpoly::addTerm1(int v0, double coeff)
 {
-	if(v0>_numvar) 
+	if(v0>=_numvar) 
 	{
-			printf("v0=%d>numvar=%d\n",v0,_numvar);
-			exit(0);
+			_numvar = v0+1;
 	}
 	return addTerm2(v0,v0,coeff);
 }
@@ -21,14 +20,13 @@ void QPBpoly::addTerm1(int v0, double coeff)
 
 void QPBpoly::addTerm2(int v0, int v1, double coeff)
 {
-	if(v1>_numvar) 
-	{
-			printf("v1=%d>numvar=%d\n",v0,_numvar);
-			exit(0);
-	}
-
 	if(v0<=v1)
 	{
+		if(v1>=_numvar) 
+		{
+			_numvar = v1+1;
+		}
+
 		std::pair<QPBF::iterator, bool> itit = _QPBcoeff.insert(std::make_pair(std::make_pair(v0,v1),coeff));
 
 		if(itit.second==false)//already got this term
@@ -121,7 +119,7 @@ QPBpoly QPBpoly::operator+(QPBpoly qpbf)
 {
 	int newnumvar = (_numvar>qpbf._numvar)?_numvar:qpbf._numvar;
 
-	QPBpoly newqpbf(newnumvar);
+	QPBpoly newqpbf;
 
 	QPBF::key_compare less= _QPBcoeff.key_comp();
 
@@ -160,6 +158,8 @@ QPBpoly QPBpoly::operator+(QPBpoly qpbf)
 		newqpbf.addTerm2(it2->first.first,it2->first.second,it2->second);
 	}
 
+
+
 	return newqpbf;
 }
 
@@ -167,7 +167,7 @@ QPBpoly QPBpoly::operator-(QPBpoly qpbf)
 {
 	int newnumvar = (_numvar>qpbf._numvar)?_numvar:qpbf._numvar;
 
-	QPBpoly newqpbf(newnumvar);
+	QPBpoly newqpbf;
 
 	QPBF::key_compare less= _QPBcoeff.key_comp();
 
@@ -214,7 +214,7 @@ QPBpoly QPBpoly::operator-(QPBpoly qpbf)
 
 QPBpoly QPBpoly::operator*(double u) 
 {
-	QPBpoly newqpbf(_numvar);
+	QPBpoly newqpbf;
 
 	QPBF::key_compare less= _QPBcoeff.key_comp();
 
@@ -242,10 +242,9 @@ double& QPBpoly::operator()(int v0, int v1)
 		v0_ = v1;
 	}
 
-	if(v1_>_numvar) 
+	if(v1_>=_numvar) 
 	{
-			printf("v1=%d>numvar=%d\n",v0,_numvar);
-			exit(0);
+			_numvar = v1_+1;
 	}
 
 	QPBF::iterator _Where = _QPBcoeff.lower_bound(std::make_pair(v0_,v1_));
