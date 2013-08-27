@@ -71,34 +71,97 @@ int Learning_mMRF::numvar()
 void Learning_mMRF::learn(Matrix<int,Dynamic,1> y)
 {
 
-	Matrix<double,Dynamic,Dynamic> lambda;
-	lambda.resize(_numlabel,_para.size());
-	lambda.fill(0);
-
+	Matrix<double,Dynamic,1> *lambda = new Matrix<double,Dynamic,1>[_numlabel];
 	for(int i=0;i<_numlabel;i++)
 	{
-		Matrix<double,Dynamic,1> coeff;
-		coeff.resize(_learner[i].numcomp());
+		lambda[i].resize(_learner[i].numcomp());
+		lambda[i].fill(0);
+	}
 
-		Matrix<bool,Dynamic,1> y_i;
+	double dual0=0;
+	double dual1=-1;
+	double bdual=0;
 
-		for(int j=0;j<y.size();j++)
+	while(dual0!=dual1)
+	{
+		dual0=dual1;
+		dual1=0;
+
+		for(int i=0;i<_numlabel;i++)
 		{
-			y_i(j) = (y(j)==i)?1:0;
+			Matrix<double,Dynamic,1> coeff;
+			coeff.resize(_learner[i].numcomp());
+
+			Matrix<bool,Dynamic,1> y_i;
+
+			for(int j=0;j<y.size();j++)
+			{
+				y_i(j) = (y(j)==i)?1:0;
+			}
+
+			for(int j=0;j<coeff.size();j++)
+			{
+				coeff(j) = _coeff(int(_lctable.getTerm2(i,_numlabel+j)));
+			}
+
+			dual1+=_learner[i].learn(y_i,coeff,lambda[i]);
+			_learner[i].para(lambda[i]);
 		}
 
-		for(int j=0;j<coeff.size();j++)
+		//update lambda
+		Matrix<double,Dynamic,1> *gradient = new Matrix<double,Dynamic,1>[_numlabel];
+		for(int i=0;i<_numlabel;i++)
 		{
-			coeff(j) = _coeff(int(_lctable.getTerm2(i,_numlabel+j)));
+			gradient[i].resize(_learner[i].numcomp());
+			gradient[i]=lambda[i];
 		}
 
-		_learner[i].learn(y_i,coeff,lambda.row(i));
+		Matrix<double,Dynamic,1> total;
+		total.resize(numcomp());
+		total.fill(0);
+
+		for(QPBF::iterator qp=_lctable.firstTerm();qp!=_lctable.lastTerm();qp++)
+		{
+			total(int(qp->second)) +=lambda[qp->first.first](int(qp->first.second));
+		}
+
+		for(QPBF::iterator qp=_lctable.firstTerm();qp!=_lctable.lastTerm();qp++)
+		{
+			gradient[qp->first.first](qp->first.second) -= total(int(qp->second));
+		}
+
+		double square=0;
+
+		for(int i=0;i<_numlabel;i++)
+		{
+			square+=gradient[i].squaredNorm();
+		}
+
+		if(dual1>=bdual) bdual = dual1+DELTA;
+		
+		double alpha = (bdual-dual1)/square;
+
+		for(int i=0;i<_numlabel;i++)
+		{
+			lambda[i] += gradient[i]*alpha;
+		}
+
 	}
 
 
+	Matrix<double,Dynamic,1> count;
+	count.resize(_para.size());
+	count.fill(0);
+	for(QPBF::iterator qp=_lctable.firstTerm();qp!=_lctable.lastTerm();qp++)
+	{
+		_para(int(qp->second))+=lambda[qp->first.first](int(qp->first.second));
+		count(int(qp->second)) += 1;
+	}
 
-
-
+	for(int i=0;i<_para.size();i++)
+	{
+		_para(i) /= count(i);
+	}
 
 	return;
 }

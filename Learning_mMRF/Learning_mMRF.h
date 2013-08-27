@@ -3,6 +3,7 @@
 #include "./Learning_QPBF/Learning_QPBF.h"
 
 #define MAXNUMCOMP 100
+#define DELTA 1
 
 class Learning_mMRF
 {
