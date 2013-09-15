@@ -56,7 +56,7 @@ int Learning_QPBF::numcomp()
 	return _componentlist->cid+1;
 }
 
-void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coeff, Matrix<double,Dynamic,1> lambda)
+double Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coeff, Matrix<double,Dynamic,1> lambda)
 //y is the ground truth, w is the weight of each parameter in the objective function
 {
 	QPBpoly vid;
@@ -75,6 +75,7 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coef
 		}
 	}
 
+	//counter = vid.size(0)+1;
 	//counter = number of active terms+1
 
 
@@ -83,9 +84,11 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coef
 	
 	printf("Construct Matrix A ...\n");
 	//start forming the contraint matrix, 
+	//w d p
 	//each row : an entry in A
 	//each column : component functions, slacks, entries in P
 	//however, do not do it entry by entry. Use the sparsity
+	//
 	for(cQPBFlist *k=_componentlist;k!=NULL;k=k->next)
 	{
 		if(k->A_i==NULL) continue;
@@ -111,6 +114,8 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coef
 			// add slack
 			if(y(i)==0) tripletList.push_back(Triplet<double>(it->second,_para.rows()+i+1,1));
 			else tripletList.push_back(Triplet<double>(it->second,_para.rows()+i+1,-1));
+
+
 			//add 1^TP21
 			tripletList.push_back(Triplet<double>(it->second,_para.rows()+_numvar+(counter*2)+it->second+1,-1));
 			//add 1^TP12, which equals to the lower triangular part of P21
@@ -245,7 +250,7 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coef
 	engEvalString(eg,"variable p(numact*4);");
 
 
-	engEvalString(eg,"minimize(norm(coeffmx.*w,1)+norm(d,1)+lambdamx.*w);");
+	engEvalString(eg,"minimize(norm(coeffmx.*w,1)+norm(d,1)+lambdamx'*w);");
 	engEvalString(eg,"subject to");
 	engEvalString(eg,"A*[w;d;p]==zeros(numact+1,1);");
 	engEvalString(eg,"w(1)==1;");
@@ -256,7 +261,7 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coef
 	mxArray *slacks = engGetVariable(eg,"d");
 	mxArray *weights = engGetVariable(eg,"w");
 	//mxArray *positerms = engGetVariable(eg,"p");
-
+	mxArray *optval = engGetVariable(eg,"cvx_optval");
 	
 	for(int i=0;i<_para.size();i++)
 	{
@@ -267,7 +272,7 @@ void Learning_QPBF::learn(Matrix<bool,Dynamic,1> y,Matrix<double,Dynamic,1> coef
 	vid.clear();
 
 
-	return;
+	return mxGetPr(optval)[0];
 }
 
 double Learning_QPBF::optimize(Matrix<bool,Dynamic,1> &y)
